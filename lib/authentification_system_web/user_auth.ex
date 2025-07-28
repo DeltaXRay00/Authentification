@@ -33,7 +33,7 @@ defmodule AuthentificationSystemWeb.UserAuth do
     |> renew_session()
     |> put_token_in_session(token)
     |> maybe_write_remember_me_cookie(token, params)
-    |> redirect(to: user_return_to || signed_in_path(conn))
+    |> redirect(to: user_return_to || signed_in_path(user))
   end
 
   defp maybe_write_remember_me_cookie(conn, token, %{"remember_me" => "true"}) do
@@ -225,7 +225,8 @@ defmodule AuthentificationSystemWeb.UserAuth do
 
   defp maybe_store_return_to(conn), do: conn
 
-  defp signed_in_path(_conn), do: ~p"/"
+  defp signed_in_path(%{role: "admin"}), do: "/admin"
+  defp signed_in_path(_user), do: "/"
 
   def require_admin(conn,_opts) do
     user = conn.assigns[:current_user]

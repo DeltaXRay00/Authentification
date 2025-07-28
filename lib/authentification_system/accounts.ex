@@ -60,6 +60,41 @@ defmodule AuthentificationSystem.Accounts do
   """
   def get_user!(id), do: Repo.get!(User, id)
 
+  @doc """
+  Lists all users.
+
+  ## Examples
+
+      iex> list_users()
+      [%User{}, ...]
+
+  """
+  def list_users do
+    Repo.all(User)
+  end
+
+  @doc """
+  Lists all users with optional filtering.
+
+  ## Examples
+
+      iex> list_users_with_stats()
+      %{users: [%User{}, ...], stats: %{total: 10, active: 8, admins: 2}}
+
+  """
+  def list_users_with_stats do
+    users = Repo.all(User)
+
+    stats = %{
+      total: length(users),
+      active: Enum.count(users, &(&1.confirmed_at != nil)),
+      admins: Enum.count(users, &(&1.role == "admin")),
+      pending: Enum.count(users, &(&1.confirmed_at == nil))
+    }
+
+    %{users: users, stats: stats}
+  end
+
   ## User registration
 
   @doc """

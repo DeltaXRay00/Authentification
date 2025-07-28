@@ -14,10 +14,10 @@ alias AuthentificationSystem.Repo
 
 hashed_password = Pbkdf2.hash_pwd_salt("supersecret")
 
-Repo.insert!(%User{
+admin_user = Repo.insert!(%User{
   email: "admin@site.com",
   hashed_password: hashed_password,
   role: "admin"
 })
 
-IO.inspect(result, label: "Admin registration result")
+IO.inspect(admin_user, label: "Admin user created")

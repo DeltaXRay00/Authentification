@@ -96,7 +96,15 @@ defmodule AuthentificationSystemWeb.Router do
   scope "/admin", AuthentificationSystemWeb do
     pipe_through [:browser, :require_authenticated_user, :admin_only]
 
-    live "/dashboard", AdminDashboardLive
+    live_session :admin,
+      on_mount: [{AuthentificationSystemWeb.UserAuth, :ensure_authenticated}, AuthentificationSystemWeb.EnsureAdmin],
+      layout: {AuthentificationSystemWeb.Layouts, :admin_live} do
+      live "/", AdminDashboardLive
+      live "/users", AdminUsersLive
+      live "/settings", AdminSettingsLive
+      live "/logs", AdminLogsLive
+      live "/backups", AdminBackupsLive
+    end
   end
 
 end
