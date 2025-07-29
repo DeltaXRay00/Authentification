@@ -104,6 +104,8 @@ defmodule AuthentificationSystemWeb.Router do
       live "/settings", AdminSettingsLive
       live "/logs", AdminLogsLive
       live "/backups", AdminBackupsLive
+      live "/collection/games", AdminGamesLive
+      live "/collection/books", AdminBooksLive
     end
   end
 
