@@ -3,19 +3,34 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
 
   alias AuthentificationSystem.Collections
 
-  def mount(%{"page" => page}, _session, socket) do
+  def mount(%{"page" => page} = params, _session, socket) do
     page = String.to_integer(page)
-    books_page = Collections.list_books_paginated(page, 10)
-    {:ok, assign(socket, books_page: books_page, show_add_form: false, editing_book: nil)}
+    filters = extract_filters(params)
+    books_page = Collections.list_books_paginated(page, 10, get_db_filters(filters))
+    filter_options = get_filter_options()
+    {:ok, assign(socket, books_page: books_page, show_add_form: false, editing_book: nil, filters: filters, filter_options: filter_options)}
   end
 
-  def mount(_params, _session, socket) do
-    books_page = Collections.list_books_paginated(1, 10)
-    {:ok, assign(socket, books_page: books_page, show_add_form: false, editing_book: nil)}
+  def mount(params, _session, socket) do
+    filters = extract_filters(params)
+    books_page = Collections.list_books_paginated(1, 10, get_db_filters(filters))
+    filter_options = get_filter_options()
+    {:ok, assign(socket, books_page: books_page, show_add_form: false, editing_book: nil, filters: filters, filter_options: filter_options)}
   end
 
   def handle_event("toggle-add-form", _params, socket) do
     {:noreply, assign(socket, show_add_form: !socket.assigns.show_add_form, editing_book: nil)}
+  end
+
+    def handle_event("filter", %{"filters" => filters}, socket) do
+    # Parse the year parameter if it exists
+    filters_with_parsed_year = Map.update(filters, "year", nil, &parse_year/1)
+    # Navigate to URL with filter parameters
+    {:noreply, push_navigate(socket, to: build_filter_url(1, filters_with_parsed_year))}
+  end
+
+    def handle_event("clear-filters", _params, socket) do
+    {:noreply, push_navigate(socket, to: ~p"/admin/collection/books")}
   end
 
   def handle_event("edit-book", %{"id" => id}, socket) do
@@ -32,7 +47,7 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
 
     case Collections.update_book(book, book_params) do
       {:ok, _updated_book} ->
-        books_page = Collections.list_books_paginated(socket.assigns.books_page.page_number, 10)
+        books_page = Collections.list_books_paginated(socket.assigns.books_page.page_number, 10, get_db_filters(socket.assigns.filters))
         {:noreply, assign(socket, books_page: books_page, editing_book: nil)}
 
       {:error, _changeset} ->
@@ -43,7 +58,7 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
   def handle_event("add-book", %{"book" => book_params}, socket) do
     case Collections.create_book(book_params) do
       {:ok, _book} ->
-        books_page = Collections.list_books_paginated(socket.assigns.books_page.page_number, 10)
+        books_page = Collections.list_books_paginated(socket.assigns.books_page.page_number, 10, get_db_filters(socket.assigns.filters))
         {:noreply, assign(socket, books_page: books_page, show_add_form: false)}
 
       {:error, _changeset} ->
@@ -54,9 +69,74 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
   def handle_event("delete-book", %{"id" => id}, socket) do
     book = Collections.get_book!(id)
     {:ok, _} = Collections.delete_book(book)
-    books_page = Collections.list_books_paginated(socket.assigns.books_page.page_number, 10)
+    books_page = Collections.list_books_paginated(socket.assigns.books_page.page_number, 10, get_db_filters(socket.assigns.filters))
     {:noreply, assign(socket, books_page: books_page)}
   end
+
+  defp extract_filters(params) do
+    %{
+      "search" => params["search"] || "",
+      "genre" => params["genre"] || "",
+      "author" => params["author"] || "",
+      "year" => params["year"] || ""  # Keep as string for form display
+    }
+  end
+
+  defp parse_year(nil), do: nil
+  defp parse_year(""), do: nil
+  defp parse_year(year) when is_binary(year) do
+    case Integer.parse(year) do
+      {year_int, _} -> year_int
+      :error -> nil
+    end
+  end
+  defp parse_year(year) when is_integer(year), do: year
+  defp parse_year(_), do: nil
+
+  defp get_filter_options do
+    %{
+      genres: Collections.list_book_genres(),
+      authors: Collections.list_book_authors(),
+      years: Collections.list_book_years()
+    }
+  end
+
+  defp build_filter_url(page, filters) do
+    query_params = filters
+    |> Enum.reject(fn {_key, value} -> is_nil(value) || value == "" end)
+    |> Enum.map(fn {key, value} ->
+      # Keep year as string for URL, but ensure it's properly formatted
+      if key == "year" and is_integer(value) do
+        "#{key}=#{value}"
+      else
+        "#{key}=#{URI.encode_www_form(value)}"
+      end
+    end)
+    |> Enum.join("&")
+
+    base_url = ~p"/admin/collection/books"
+
+    if query_params != "" do
+      "#{base_url}?page=#{page}&#{query_params}"
+    else
+      "#{base_url}?page=#{page}"
+    end
+  end
+
+  defp build_pagination_url(page, filters) do
+    build_filter_url(page, filters)
+  end
+
+  # Helper function to get filters for database queries
+  defp get_db_filters(filters) do
+    %{
+      "search" => filters["search"],
+      "genre" => filters["genre"],
+      "author" => filters["author"],
+      "year" => parse_year(filters["year"])  # Parse as integer for DB
+    }
+  end
+
 
   def render(assigns) do
     ~H"""
@@ -76,6 +156,81 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
           </svg>
           Add Book
         </button>
+      </div>
+
+      <!-- Filters -->
+      <div class="bg-white shadow rounded-lg p-6 border border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Filters</h3>
+        <form phx-change="filter" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label for="search" class="block text-sm font-medium text-gray-700">Search</label>
+              <input
+                type="text"
+                name="filters[search]"
+                id="search"
+                value={@filters["search"] || ""}
+                placeholder="Search books..."
+                phx-debounce="500"
+                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label for="genre" class="block text-sm font-medium text-gray-700">Genre</label>
+              <select
+                name="filters[genre]"
+                id="genre"
+                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All Genres</option>
+                <%= for genre <- @filter_options.genres do %>
+                  <option value={genre} selected={@filters["genre"] == genre}>
+                    <%= genre %>
+                  </option>
+                <% end %>
+              </select>
+            </div>
+            <div>
+              <label for="author" class="block text-sm font-medium text-gray-700">Author</label>
+              <select
+                name="filters[author]"
+                id="author"
+                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All Authors</option>
+                <%= for author <- @filter_options.authors do %>
+                  <option value={author} selected={@filters["author"] == author}>
+                    <%= author %>
+                  </option>
+                <% end %>
+              </select>
+            </div>
+            <div>
+              <label for="year" class="block text-sm font-medium text-gray-700">Year</label>
+              <select
+                name="filters[year]"
+                id="year"
+                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All Years</option>
+                <%= for year <- @filter_options.years do %>
+                  <option value={year} selected={@filters["year"] == to_string(year)}>
+                    <%= year %>
+                  </option>
+                <% end %>
+              </select>
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <button
+              type="button"
+              phx-click="clear-filters"
+              class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </form>
       </div>
 
       <!-- Add Book Form -->
@@ -110,8 +265,8 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
                   type="number"
                   name="book[published_year]"
                   id="published_year"
-                  min="1000"
-                  max="2024"
+                  min="1900"
+                  max="2030"
                   required
                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -182,8 +337,8 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
                   name="book[published_year]"
                   id="edit_published_year"
                   value={@editing_book.published_year}
-                  min="1000"
-                  max="2024"
+                  min="1900"
+                  max="2030"
                   required
                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -285,9 +440,9 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
         <!-- Pagination -->
         <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
           <div class="flex-1 flex justify-between sm:hidden">
-            <%= if @books_page.page_number > 1 do %>
+                        <%= if @books_page.page_number > 1 do %>
               <.link
-                navigate={~p"/admin/collection/books?page=#{@books_page.page_number - 1}"}
+                navigate={build_pagination_url(@books_page.page_number - 1, @filters)}
                 class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
               >
                 Previous
@@ -300,7 +455,7 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
 
             <%= if @books_page.page_number < @books_page.total_pages do %>
               <.link
-                navigate={~p"/admin/collection/books?page=#{@books_page.page_number + 1}"}
+                navigate={build_pagination_url(@books_page.page_number + 1, @filters)}
                 class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
               >
                 Next
@@ -320,9 +475,9 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
             </div>
             <div>
               <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                <%= if @books_page.page_number > 1 do %>
+                                <%= if @books_page.page_number > 1 do %>
                   <.link
-                    navigate={~p"/admin/collection/books?page=#{@books_page.page_number - 1}"}
+                    navigate={build_pagination_url(@books_page.page_number - 1, @filters)}
                     class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
                   >
                     <span class="sr-only">Previous</span>
@@ -339,7 +494,7 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
                     </span>
                   <% else %>
                     <.link
-                      navigate={~p"/admin/collection/books?page=#{page_num}"}
+                      navigate={build_pagination_url(page_num, @filters)}
                       class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
                     >
                       <%= page_num %>
@@ -349,7 +504,7 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
 
                 <%= if @books_page.page_number < @books_page.total_pages do %>
                   <.link
-                    navigate={~p"/admin/collection/books?page=#{@books_page.page_number + 1}"}
+                    navigate={build_pagination_url(@books_page.page_number + 1, @filters)}
                     class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
                   >
                     <span class="sr-only">Next</span>
