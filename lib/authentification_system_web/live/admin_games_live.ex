@@ -22,12 +22,17 @@ defmodule AuthentificationSystemWeb.AdminGamesLive do
     {:noreply, assign(socket, show_add_form: !socket.assigns.show_add_form, editing_game: nil)}
   end
 
-  def handle_event("filter", %{"filters" => filters}, socket) do
+    def handle_event("filter", %{"filters" => filters}, socket) do
     # Parse the year parameter if it exists
     filters_with_parsed_year = Map.update(filters, "year", nil, &parse_year/1)
     # Navigate to URL with filter parameters
     {:noreply, push_navigate(socket, to: build_filter_url(1, filters_with_parsed_year))}
   end
+
+
+
+
+
 
   def handle_event("clear-filters", _params, socket) do
     {:noreply, push_navigate(socket, to: ~p"/admin/collection/games")}
@@ -170,7 +175,7 @@ defmodule AuthentificationSystemWeb.AdminGamesLive do
                 id="search"
                 value={@filters["search"] || ""}
                 placeholder="Search games..."
-                phx-debounce="500"
+                phx-debounce="300"
                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
