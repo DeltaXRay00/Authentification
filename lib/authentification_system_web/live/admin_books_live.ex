@@ -3,20 +3,48 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
 
   alias AuthentificationSystem.Collections
 
+  def mount(%{"page" => page}, _session, socket) do
+    page = String.to_integer(page)
+    books_page = Collections.list_books_paginated(page, 10)
+    {:ok, assign(socket, books_page: books_page, show_add_form: false, editing_book: nil)}
+  end
+
   def mount(_params, _session, socket) do
-    books = Collections.list_books()
-    {:ok, assign(socket, books: books, show_add_form: false)}
+    books_page = Collections.list_books_paginated(1, 10)
+    {:ok, assign(socket, books_page: books_page, show_add_form: false, editing_book: nil)}
   end
 
   def handle_event("toggle-add-form", _params, socket) do
-    {:noreply, assign(socket, show_add_form: !socket.assigns.show_add_form)}
+    {:noreply, assign(socket, show_add_form: !socket.assigns.show_add_form, editing_book: nil)}
+  end
+
+  def handle_event("edit-book", %{"id" => id}, socket) do
+    book = Collections.get_book!(id)
+    {:noreply, assign(socket, editing_book: book, show_add_form: false)}
+  end
+
+  def handle_event("cancel-edit", _params, socket) do
+    {:noreply, assign(socket, editing_book: nil)}
+  end
+
+  def handle_event("update-book", %{"book" => book_params, "_id" => id}, socket) do
+    book = Collections.get_book!(id)
+
+    case Collections.update_book(book, book_params) do
+      {:ok, _updated_book} ->
+        books_page = Collections.list_books_paginated(socket.assigns.books_page.page_number, 10)
+        {:noreply, assign(socket, books_page: books_page, editing_book: nil)}
+
+      {:error, _changeset} ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event("add-book", %{"book" => book_params}, socket) do
     case Collections.create_book(book_params) do
       {:ok, _book} ->
-        books = Collections.list_books()
-        {:noreply, assign(socket, books: books, show_add_form: false)}
+        books_page = Collections.list_books_paginated(socket.assigns.books_page.page_number, 10)
+        {:noreply, assign(socket, books_page: books_page, show_add_form: false)}
 
       {:error, _changeset} ->
         {:noreply, socket}
@@ -26,8 +54,8 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
   def handle_event("delete-book", %{"id" => id}, socket) do
     book = Collections.get_book!(id)
     {:ok, _} = Collections.delete_book(book)
-    books = Collections.list_books()
-    {:noreply, assign(socket, books: books)}
+    books_page = Collections.list_books_paginated(socket.assigns.books_page.page_number, 10)
+    {:noreply, assign(socket, books_page: books_page)}
   end
 
   def render(assigns) do
@@ -118,6 +146,79 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
         </div>
       <% end %>
 
+      <!-- Edit Book Form -->
+      <%= if @editing_book do %>
+        <div class="bg-white shadow rounded-lg p-6 border border-gray-200">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Edit Book: <%= @editing_book.title %></h3>
+          <form phx-submit="update-book" class="space-y-4">
+            <input type="hidden" name="_id" value={@editing_book.id} />
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label for="edit_title" class="block text-sm font-medium text-gray-700">Title</label>
+                <input
+                  type="text"
+                  name="book[title]"
+                  id="edit_title"
+                  value={@editing_book.title}
+                  required
+                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label for="edit_author" class="block text-sm font-medium text-gray-700">Author</label>
+                <input
+                  type="text"
+                  name="book[author]"
+                  id="edit_author"
+                  value={@editing_book.author}
+                  required
+                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label for="edit_published_year" class="block text-sm font-medium text-gray-700">Published Year</label>
+                <input
+                  type="number"
+                  name="book[published_year]"
+                  id="edit_published_year"
+                  value={@editing_book.published_year}
+                  min="1000"
+                  max="2024"
+                  required
+                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label for="edit_genre" class="block text-sm font-medium text-gray-700">Genre</label>
+                <input
+                  type="text"
+                  name="book[genre]"
+                  id="edit_genre"
+                  value={@editing_book.genre}
+                  required
+                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+              <button
+                type="button"
+                phx-click="cancel-edit"
+                class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                Update Book
+              </button>
+            </div>
+          </form>
+        </div>
+      <% end %>
+
       <!-- Books Table -->
       <div class="bg-white shadow overflow-hidden sm:rounded-md">
         <div class="px-4 py-5 sm:px-6">
@@ -136,7 +237,7 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <%= for book <- @books do %>
+              <%= for book <- @books_page.entries do %>
                 <tr class="hover:bg-gray-50">
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     <%= book.title %>
@@ -151,21 +252,115 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
                     <%= book.genre %>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <button
-                      phx-click="delete-book"
-                      phx-value-id={book.id}
-                      data-confirm="Are you sure you want to delete this book?"
-                      class="text-red-600 hover:text-red-900"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                    <div class="flex space-x-2">
+                      <button
+                        phx-click="edit-book"
+                        phx-value-id={book.id}
+                        class="text-blue-600 hover:text-blue-900"
+                        title="Edit book"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        phx-click="delete-book"
+                        phx-value-id={book.id}
+                        data-confirm="Are you sure you want to delete this book?"
+                        class="text-red-600 hover:text-red-900"
+                        title="Delete book"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               <% end %>
             </tbody>
           </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div class="flex-1 flex justify-between sm:hidden">
+            <%= if @books_page.page_number > 1 do %>
+              <.link
+                navigate={~p"/admin/collection/books?page=#{@books_page.page_number - 1}"}
+                class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Previous
+              </.link>
+            <% else %>
+              <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-300 bg-white cursor-not-allowed">
+                Previous
+              </span>
+            <% end %>
+
+            <%= if @books_page.page_number < @books_page.total_pages do %>
+              <.link
+                navigate={~p"/admin/collection/books?page=#{@books_page.page_number + 1}"}
+                class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Next
+              </.link>
+            <% else %>
+              <span class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-300 bg-white cursor-not-allowed">
+                Next
+              </span>
+            <% end %>
+          </div>
+
+          <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p class="text-sm text-gray-700">
+                Showing <span class="font-medium"><%= (@books_page.page_number - 1) * @books_page.page_size + 1 %></span> to <span class="font-medium"><%= min(@books_page.page_number * @books_page.page_size, @books_page.total_entries) %></span> of <span class="font-medium"><%= @books_page.total_entries %></span> results
+              </p>
+            </div>
+            <div>
+              <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <%= if @books_page.page_number > 1 do %>
+                  <.link
+                    navigate={~p"/admin/collection/books?page=#{@books_page.page_number - 1}"}
+                    class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                  >
+                    <span class="sr-only">Previous</span>
+                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                  </.link>
+                <% end %>
+
+                <%= for page_num <- max(1, @books_page.page_number - 2)..min(@books_page.total_pages, @books_page.page_number + 2) do %>
+                  <%= if page_num == @books_page.page_number do %>
+                    <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">
+                      <%= page_num %>
+                    </span>
+                  <% else %>
+                    <.link
+                      navigate={~p"/admin/collection/books?page=#{page_num}"}
+                      class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      <%= page_num %>
+                    </.link>
+                  <% end %>
+                <% end %>
+
+                <%= if @books_page.page_number < @books_page.total_pages do %>
+                  <.link
+                    navigate={~p"/admin/collection/books?page=#{@books_page.page_number + 1}"}
+                    class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                  >
+                    <span class="sr-only">Next</span>
+                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
+                  </.link>
+                <% end %>
+              </nav>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -24,6 +24,37 @@ defmodule AuthentificationSystem.Collections do
   end
 
   @doc """
+  Returns a paginated list of games.
+
+  ## Examples
+
+      iex> list_games_paginated(1, 10)
+      %{entries: [%Game{}, ...], page_number: 1, page_size: 10, total_entries: 50, total_pages: 5}
+
+  """
+  def list_games_paginated(page \\ 1, page_size \\ 10) do
+    offset = (page - 1) * page_size
+
+    total_entries = Repo.aggregate(Game, :count, :id)
+    total_pages = ceil(total_entries / page_size)
+
+    entries =
+      Game
+      |> order_by([g], g.inserted_at)
+      |> limit(^page_size)
+      |> offset(^offset)
+      |> Repo.all()
+
+    %{
+      entries: entries,
+      page_number: page,
+      page_size: page_size,
+      total_entries: total_entries,
+      total_pages: total_pages
+    }
+  end
+
+  @doc """
   Gets a single game.
 
   Raises `Ecto.NoResultsError` if the Game does not exist.
@@ -117,6 +148,37 @@ defmodule AuthentificationSystem.Collections do
   """
   def list_books do
     Repo.all(Book)
+  end
+
+  @doc """
+  Returns a paginated list of books.
+
+  ## Examples
+
+      iex> list_books_paginated(1, 10)
+      %{entries: [%Book{}, ...], page_number: 1, page_size: 10, total_entries: 50, total_pages: 5}
+
+  """
+  def list_books_paginated(page \\ 1, page_size \\ 10) do
+    offset = (page - 1) * page_size
+
+    total_entries = Repo.aggregate(Book, :count, :id)
+    total_pages = ceil(total_entries / page_size)
+
+    entries =
+      Book
+      |> order_by([b], b.inserted_at)
+      |> limit(^page_size)
+      |> offset(^offset)
+      |> Repo.all()
+
+    %{
+      entries: entries,
+      page_number: page,
+      page_size: page_size,
+      total_entries: total_entries,
+      total_pages: total_pages
+    }
   end
 
   @doc """

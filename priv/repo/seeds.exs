@@ -35,22 +35,85 @@ case Repo.aggregate(Game, :count, :id) do
       %{
         title: "The Legend of Zelda: Breath of the Wild",
         company: "Nintendo",
-        release_date: ~D[2017-03-03],
+        released_year: 2017,
         genre: "Action-Adventure",
         platform: "Nintendo Switch"
       },
       %{
         title: "Red Dead Redemption 2",
         company: "Rockstar Games",
-        release_date: ~D[2018-10-26],
+        released_year: 2018,
         genre: "Action-Adventure",
         platform: "PlayStation 4, Xbox One, PC"
       },
       %{
         title: "Cyberpunk 2077",
         company: "CD Projekt",
-        release_date: ~D[2020-12-10],
+        released_year: 2020,
         genre: "RPG",
+        platform: "PlayStation 4, Xbox One, PC"
+      },
+      %{
+        title: "God of War",
+        company: "Santa Monica Studio",
+        released_year: 2018,
+        genre: "Action-Adventure",
+        platform: "PlayStation 4"
+      },
+      %{
+        title: "The Witcher 3: Wild Hunt",
+        company: "CD Projekt",
+        released_year: 2015,
+        genre: "RPG",
+        platform: "PlayStation 4, Xbox One, PC"
+      },
+      %{
+        title: "Spider-Man",
+        company: "Insomniac Games",
+        released_year: 2018,
+        genre: "Action-Adventure",
+        platform: "PlayStation 4"
+      },
+      %{
+        title: "Horizon Zero Dawn",
+        company: "Guerrilla Games",
+        released_year: 2017,
+        genre: "Action-RPG",
+        platform: "PlayStation 4"
+      },
+      %{
+        title: "Uncharted 4: A Thief's End",
+        company: "Naughty Dog",
+        released_year: 2016,
+        genre: "Action-Adventure",
+        platform: "PlayStation 4"
+      },
+      %{
+        title: "Assassin's Creed Valhalla",
+        company: "Ubisoft",
+        released_year: 2020,
+        genre: "Action-RPG",
+        platform: "PlayStation 4, Xbox One, PC"
+      },
+      %{
+        title: "Final Fantasy VII Remake",
+        company: "Square Enix",
+        released_year: 2020,
+        genre: "RPG",
+        platform: "PlayStation 4"
+      },
+      %{
+        title: "Death Stranding",
+        company: "Kojima Productions",
+        released_year: 2019,
+        genre: "Action",
+        platform: "PlayStation 4"
+      },
+      %{
+        title: "Resident Evil 2 Remake",
+        company: "Capcom",
+        released_year: 2019,
+        genre: "Survival Horror",
         platform: "PlayStation 4, Xbox One, PC"
       }
     ]
@@ -85,6 +148,60 @@ case Repo.aggregate(Book, :count, :id) do
         author: "George Orwell",
         published_year: 1949,
         genre: "Dystopian Fiction"
+      },
+      %{
+        title: "Pride and Prejudice",
+        author: "Jane Austen",
+        published_year: 1813,
+        genre: "Romance"
+      },
+      %{
+        title: "The Catcher in the Rye",
+        author: "J.D. Salinger",
+        published_year: 1951,
+        genre: "Coming-of-age"
+      },
+      %{
+        title: "Lord of the Flies",
+        author: "William Golding",
+        published_year: 1954,
+        genre: "Allegory"
+      },
+      %{
+        title: "Animal Farm",
+        author: "George Orwell",
+        published_year: 1945,
+        genre: "Allegory"
+      },
+      %{
+        title: "The Hobbit",
+        author: "J.R.R. Tolkien",
+        published_year: 1937,
+        genre: "Fantasy"
+      },
+      %{
+        title: "The Lord of the Rings",
+        author: "J.R.R. Tolkien",
+        published_year: 1954,
+        genre: "Fantasy"
+      },
+      %{
+        title: "Brave New World",
+        author: "Aldous Huxley",
+        published_year: 1932,
+        genre: "Dystopian Fiction"
+      },
+      %{
+        title: "Fahrenheit 451",
+        author: "Ray Bradbury",
+        published_year: 1953,
+        genre: "Dystopian Fiction"
+      },
+      %{
+        title: "The Alchemist",
+        author: "Paulo Coelho",
+        published_year: 1988,
+        genre: "Fiction"
       }
     ]
 
