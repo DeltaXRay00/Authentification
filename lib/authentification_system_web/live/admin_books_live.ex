@@ -29,6 +29,13 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
     {:noreply, push_navigate(socket, to: build_filter_url(1, filters_with_parsed_year))}
   end
 
+    def handle_event("search-input", %{"value" => search_term}, socket) do
+    # Update the search term in the filters map
+    filters = Map.put(socket.assigns.filters, "search", search_term)
+    # Navigate to URL with filter parameters
+    {:noreply, push_navigate(socket, to: build_filter_url(1, filters))}
+  end
+
 
 
 
@@ -171,10 +178,10 @@ defmodule AuthentificationSystemWeb.AdminBooksLive do
               <label for="search" class="block text-sm font-medium text-gray-700">Search</label>
               <input
                 type="text"
-                name="filters[search]"
                 id="search"
                 value={@filters["search"] || ""}
                 placeholder="Search books..."
+                phx-keyup="search-input"
                 phx-debounce="300"
                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
               />
